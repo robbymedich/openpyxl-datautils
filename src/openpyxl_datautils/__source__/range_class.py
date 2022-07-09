@@ -96,6 +96,8 @@ class CellRange(Immutable):
     -------
     from_string: CellRange
         Create a CellRange from a range address instead of indices for the range boundary
+    from_worksheet: CellRange
+        Create a CellRange object to represent ALL cells in the used range of a worksheet.
     current_region: CellRange
         Expand the range to the right, then down to include adjacent data (mimics Excel VBA's current_region method)
     create_df: pd.DataFrame
@@ -164,7 +166,7 @@ class CellRange(Immutable):
         return False
 
     @classmethod
-    def from_string(cls, parent: Worksheet | Workbook, range_address: str):
+    def from_string(cls, parent: Worksheet | Workbook, range_address: str) -> CellRange:
         """
         Create a CellRange object to represent a group of cells within a worksheet.
 
@@ -172,6 +174,9 @@ class CellRange(Immutable):
              parent: either a openpyxl.Worksheet or openpyxl.Workbook containing the range of cells
              range_address: address for the group of cells to use when creating the CellRange
         """
+        if isinstance(parent, str):
+            raise TypeError("Expected a 'Worksheet' or 'Workbook' object. Received 'str'")
+
         if isinstance(parent, Workbook):
             try:
                 sheet_name, range_address = range_address.split('!')
@@ -195,6 +200,22 @@ class CellRange(Immutable):
 
         start_column, start_row, end_column, end_row = openpyxl.utils.range_boundaries(range_address)
         return cls(worksheet, start_row, start_column, end_row, end_column)
+
+    @classmethod
+    def from_worksheet(cls, worksheet: Worksheet) -> CellRange:
+        """
+        Create a CellRange object to represent ALL cells in the used range of a worksheet.
+
+        Parameters:
+             worksheet: openpyxl.Worksheet containing the range of cells
+        """
+        return cls(
+            worksheet=worksheet,
+            start_row=worksheet.min_row,
+            start_column=worksheet.min_column,
+            end_row=worksheet.max_row,
+            end_column=worksheet.max_column,
+        )
 
     @property
     def bounds(self) -> dict:
@@ -255,7 +276,7 @@ class CellRange(Immutable):
             for j, cell in enumerate(row):
                 cell.value = updated_values[i, j]
 
-    def _get_last_column(self):
+    def _get_last_column(self) -> int:
         """ Get the last column with data from a given starting point """
         start_cell = self.worksheet.cell(self._start_row, self._start_column)
         current_cell = start_cell
@@ -267,7 +288,7 @@ class CellRange(Immutable):
 
         return max(col_index - 1, self._end_column)
 
-    def _get_last_row(self):
+    def _get_last_row(self) -> int:
         """ Get the last row with data from a given starting point """
         end_unknown = self._end_unknown
         self._end_unknown = True
@@ -431,5 +452,3 @@ def _style_headers(cell_range: CellRange):
         cell.font = style.Font(bold=True)
         cell.alignment = style.Alignment(horizontal='center')
         cell.border = style.Border(top=thin_border, bottom=thin_border, left=thin_border, right=thin_border)
-
-
