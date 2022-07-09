@@ -14,6 +14,9 @@ This package is primarily used to create (and overwrite) the CellRange object to
 * ```write_df()``` - Write data from a Pandas DataFrame to the values of a CellRange
     * For larger data set this is about **20% faster** then df.to_excel()
 
+### Installation
+This package can be found on [PyPI](https://pypi.org/project/openpyxl-datautils/) and can can be installed with ```pip install openpyxl-datautils```
+
 ### Documentation
 The [openpyxl-datautils wiki](https://github.com/robbymedich/openpyxl-datautils/wiki) provides documentation on the classes and functions contained in the package. Additionally, known issues can be found on GitHub's [Issues](https://github.com/robbymedich/openpyxl-datautils/issues) tab.
 
