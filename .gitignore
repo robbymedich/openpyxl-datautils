@@ -1,0 +1,10 @@
+__pycache__
+venv
+
+.idea
+.ipynb_checkpoints
+
+tests/archive
+
+dist
+src/openpyxl_datautils.egg-info
