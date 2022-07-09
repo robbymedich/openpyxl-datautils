@@ -5,4 +5,3 @@ venv
 .ipynb_checkpoints
 
 tests/archive
-tests/workbooks
