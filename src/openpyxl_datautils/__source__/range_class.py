@@ -99,11 +99,11 @@ class CellRange(Immutable):
     from_worksheet: CellRange
         Create a CellRange object to represent ALL cells in the used range of a worksheet.
     current_region: CellRange
-        Expand the range to the right, then down to include adjacent data (mimics Excel VBA's current_region method)
+        Expand the range to the right, then down to include adjacent data ("mimics" Excel VBA's current_region method)
     create_df: pd.DataFrame
         Create a Pandas DataFrame with the data contained in a given CellRange
     write_df:
-        Write data from a set of tuples to the values of a CellRange
+        Write data from a Pandas DataFrame to the values of a CellRange
     """
     __slots__ = ('worksheet', '_start_row', '_start_column', '_end_row', '_end_column', 'address',
                  '_end_unknown', '_FloatingCellRange')

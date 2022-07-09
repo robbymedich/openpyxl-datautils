@@ -4,9 +4,8 @@ venv
 .idea
 .ipynb_checkpoints
 
-tests/archive
-
 dist
 src/openpyxl_datautils.egg-info
 
-tests/workbooks/demo_write.xlsx
+examples/archive
+examples/workbooks/demo_write.xlsx
