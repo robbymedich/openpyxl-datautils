@@ -302,7 +302,7 @@ class CellRange(Immutable):
 
     def current_region(self) -> CellRange:
         """
-        Expand the range to the right, then down to include adjacent data (mimics Excel VBA's current_region method).
+        Expand the range to the right, then down to include adjacent data ("mimics" Excel VBA's current_region method).
 
         Returns:
             CellRange object containing adjacent data from the source CellRange.
