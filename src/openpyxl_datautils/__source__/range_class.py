@@ -61,17 +61,16 @@ class Immutable:
 class WorksheetBoundaryError(Exception):
     """ Create a custom exception for any attempts to use cells outside the worksheet range """
     def __init__(self, worksheet: Worksheet):
-        self.worksheet = worksheet
-
-    def __str__(self):
         sheet_range = CellRange(
-            worksheet=self.worksheet,
-            start_row=self.worksheet.min_row,
-            start_column=self.worksheet.min_column,
-            end_row=self.worksheet.max_row,
-            end_column=self.worksheet.max_column
+            worksheet=worksheet,
+            start_row=worksheet.min_row,
+            start_column=worksheet.min_column,
+            end_row=worksheet.max_row,
+            end_column=worksheet.max_column
         )
-        return f'Attempted to read values outside the used range of the worksheet. Cells must be within {sheet_range}.'
+        self.message = f'Attempted to read values outside the used range of the worksheet.' \
+                       f'Cells must be within {sheet_range}.'
+        super().__init__(self.message)
 
 
 class CellRange(Immutable):
@@ -97,6 +96,8 @@ class CellRange(Immutable):
     -------
     from_string: CellRange
         Create a CellRange from a range address instead of indices for the range boundary
+    from_worksheet: CellRange
+        Create a CellRange object to represent ALL cells in the used range of a worksheet.
     current_region: CellRange
         Expand the range to the right, then down to include adjacent data (mimics Excel VBA's current_region method)
     create_df: pd.DataFrame
@@ -165,7 +166,7 @@ class CellRange(Immutable):
         return False
 
     @classmethod
-    def from_string(cls, parent: Worksheet | Workbook, range_address: str):
+    def from_string(cls, parent: Worksheet | Workbook, range_address: str) -> CellRange:
         """
         Create a CellRange object to represent a group of cells within a worksheet.
 
@@ -173,6 +174,9 @@ class CellRange(Immutable):
              parent: either a openpyxl.Worksheet or openpyxl.Workbook containing the range of cells
              range_address: address for the group of cells to use when creating the CellRange
         """
+        if isinstance(parent, str):
+            raise TypeError("Expected a 'Worksheet' or 'Workbook' object. Received 'str'")
+
         if isinstance(parent, Workbook):
             try:
                 sheet_name, range_address = range_address.split('!')
@@ -196,6 +200,22 @@ class CellRange(Immutable):
 
         start_column, start_row, end_column, end_row = openpyxl.utils.range_boundaries(range_address)
         return cls(worksheet, start_row, start_column, end_row, end_column)
+
+    @classmethod
+    def from_worksheet(cls, worksheet: Worksheet) -> CellRange:
+        """
+        Create a CellRange object to represent ALL cells in the used range of a worksheet.
+
+        Parameters:
+             worksheet: openpyxl.Worksheet containing the range of cells
+        """
+        return cls(
+            worksheet=worksheet,
+            start_row=worksheet.min_row,
+            start_column=worksheet.min_column,
+            end_row=worksheet.max_row,
+            end_column=worksheet.max_column,
+        )
 
     @property
     def bounds(self) -> dict:
@@ -228,18 +248,13 @@ class CellRange(Immutable):
                 self._end_row > self.worksheet.max_row or self._end_column > self.worksheet.max_column:
             raise WorksheetBoundaryError(self.worksheet)
 
-        row_start = self._start_row - 1
-        row_end = self._end_row - 1
-        col_start = self._start_column + (self._start_column - self.worksheet.min_column) - 1
-        col_end = col_start + (self._end_column - self._start_column) + 1
-
         for i, row_values in enumerate(self.worksheet.values):
-            if i < row_start:
+            if i < self._start_row - 1:
                 continue
-            if self._end_unknown is False and i > row_end:
+            if self._end_unknown is False and i > self._end_row - 1:
                 break
 
-            row_values = tuple(islice(row_values, col_start, col_end))
+            row_values = tuple(islice(row_values, self._start_column - 1, self._end_column))
             if self._end_unknown is True and any(row_values) is False:
                 break
             yield row_values
@@ -261,7 +276,7 @@ class CellRange(Immutable):
             for j, cell in enumerate(row):
                 cell.value = updated_values[i, j]
 
-    def _get_last_column(self):
+    def _get_last_column(self) -> int:
         """ Get the last column with data from a given starting point """
         start_cell = self.worksheet.cell(self._start_row, self._start_column)
         current_cell = start_cell
@@ -273,7 +288,7 @@ class CellRange(Immutable):
 
         return max(col_index - 1, self._end_column)
 
-    def _get_last_row(self):
+    def _get_last_row(self) -> int:
         """ Get the last row with data from a given starting point """
         end_unknown = self._end_unknown
         self._end_unknown = True
@@ -287,7 +302,7 @@ class CellRange(Immutable):
 
     def current_region(self) -> CellRange:
         """
-        Expand the range to the right, then down to include adjacent data (mimics Excel VBA's current_region method).
+        Expand the range to the right, then down to include adjacent data ("mimics" Excel VBA's current_region method).
 
         Returns:
             CellRange object containing adjacent data from the source CellRange.
@@ -307,11 +322,12 @@ class CellRange(Immutable):
             end_column=cell_range._end_column,
         )
 
-    def create_df(self, expand_range: bool = False) -> pd.DataFrame:
+    def create_df(self, has_headers: bool = True, expand_range: bool = False) -> pd.DataFrame:
         """
         Create a Pandas DataFrame with the data contained in a given CellRange.
 
         Parameters:
+            has_headers: Indicates if the first row of data represents column names for the dataframe
             expand_range: Indicates if the range should automatically be expanded to include adjacent data.
                 - If the range is one cell, the range will be expanded to the right, then down
                 - If the range is one row, the range will be expanded down
@@ -320,6 +336,7 @@ class CellRange(Immutable):
             DataFrame with the data in the CellRange
         """
         end_unknown = self._end_unknown
+        cell_range = self
         if expand_range:
             # make sure range is a single cell or single row
             if self._start_row != self._end_row:
@@ -331,7 +348,7 @@ class CellRange(Immutable):
                     start_row=self._start_row,
                     start_column=self._start_column,
                     end_row=self._end_row,
-                    end_column=self._get_last_column()
+                    end_column=self._get_last_column(),
                 )
                 cell_range._end_unknown = True
                 row_values = cell_range.values
@@ -341,9 +358,22 @@ class CellRange(Immutable):
         else:
             row_values = self.values
 
-        columns = next(row_values)  # first row should be column names
+        if has_headers is False:
+            header_range = CellRange(
+                worksheet=cell_range.worksheet,
+                start_row=cell_range._start_row,
+                start_column=cell_range._start_column,
+                end_row=cell_range._start_row,
+                end_column=cell_range._end_column,
+            )
+            columns = [cell.column_letter for cell in header_range.cells[0]]
+        else:
+            columns = next(row_values)  # first row is column names
 
         df = pd.DataFrame(data=row_values, columns=columns)
+        start_row = cell_range._start_row + 1 if has_headers else cell_range._start_row
+        df.index = np.arange(start_row, start_row + df.shape[0])
+
         self._end_unknown = end_unknown
         return df
 
