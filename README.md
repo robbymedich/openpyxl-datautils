@@ -18,7 +18,7 @@ This package is primarily used to create (and overwrite) the CellRange object to
 The [openpyxl-datautils wiki](https://github.com/robbymedich/openpyxl-datautils/wiki) provides documentation on the classes and functions contained in the package. Additionally, known issues can be found on GitHub's [Issues](https://github.com/robbymedich/openpyxl-datautils/issues) tab.
 
 ### Examples
-* For basic examples of how to read and write data using the CellRange object see [basic_demo.ipynb](https://github.com/robbymedich/openpyxl-datautils/blob/9b4feb36a795fcb9d833dc4738f7cc33aec5be14/examples/basic_demo.ipynb)
+* For basic examples of how to read and write data using the CellRange object see [basic_demo.ipynb](https://github.com/robbymedich/openpyxl-datautils/blob/main/examples/basic_demo.ipynb)
 * Load data from all sheets in a workbook:
     ```python
     from openpyxl_datautils import load_workbook
